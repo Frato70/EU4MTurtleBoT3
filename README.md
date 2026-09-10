@@ -1,2 +1,18 @@
-# TurtleBot_Rover
-This EU4MTrutleBoT3 project is about building a physical autonomous lunar rover based on a TurtleBot3 Burger robot model using the Waffle-Plates, Dynamixel XL430 motors, OpenCR1.0 board, Raspberry Pi, and a 360 Laser Distance Sensor.
+# EU4MTurtleBoT3 - Autonomous Lunar Rover
+
+## Project Overview
+This repository contains the ROS 2 software stack and configuration files for a physical autonomous lunar rover based on the TurtleBot3 Burger platform. This work is developed for the **VP774A Design and Development Project II** course. 
+
+## Hardware Specifications
+* **Base Platform:** TurtleBot3 Burger (Waffle-Plates)
+* **Actuators:** 2x DYNAMIXEL XL430 motors
+* **Embedded Controller:** OpenCR1.0
+* **Compute Node:** Raspberry Pi
+* **Perception:** 360 Laser Distance Sensor (LDS)
+
+## Maintainers and Contributors
+* **Maintainer:** Agahan Yuldashev
+* **Contributors:** Al Faiz, Ulrich Jordan, Ikram
+
+## License
+This project is released under the BSD License.
