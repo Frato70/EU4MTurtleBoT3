@@ -10,9 +10,8 @@ This repository contains the ROS 2 software stack and configuration files for a 
 * **Compute Node:** Raspberry Pi
 * **Perception:** 360 Laser Distance Sensor (LDS)
 
-## Maintainers and Contributors
-* **Maintainer:** Agahan Yuldashev
-* **Contributors:** Al Faiz, Luis Antonio, Ulrich Jordan, Ikram
+## Contributors
+* **Contributors:** Agahan Yuldashev, Al Faiz, Luis Antonio, Ulrich Jordan, Ikram
 
 ## License
 This project is released under the BSD License.
