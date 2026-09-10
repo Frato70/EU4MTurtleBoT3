@@ -1,2 +1,2 @@
 # TurtleBot_Rover
-This project develops a lunar rover based on a TrutleBot robot model.
+This EU4MTrutleBoT3 project is about building a physical autonomous lunar rover based on a TurtleBot3 Burger robot model using the Waffle-Plates, Dynamixel XL430 motors, OpenCR1.0 board, Raspberry Pi, and a 360 Laser Distance Sensor.
