@@ -8,7 +8,7 @@ This repository contains the ROS 2 software stack and configuration files for a 
 * **Actuators:** 2x DYNAMIXEL XL430 motors
 * **Embedded Controller:** OpenCR1.0
 * **Compute Node:** Raspberry Pi
-* **Perception:** 360 Laser Distance Sensor LDS-02, a 2D laser scanner capable of sensing 360 degrees that collects a set of data around the robot to use for SLAM (Simultaneous Localization and Mapping) and Navigation. (Effective October 2025, this LDS Sensor has been changed to LDS-03 Version)
+* **Perception:** Laser Distance Sensor LDS-02 Version, a 2D laser scanner capable of sensing 360 degrees that collects a set of data around the robot to use for SLAM (Simultaneous Localization and Mapping) and Navigation. (Effective October 2025, this LDS Sensor has been changed to LDS-03 Version)
 
 ## Contributors
 * **Contributors:** Agahan Yuldashev, Al Faiz, Luis Antonio, Ulrich Jordan, Ikram
