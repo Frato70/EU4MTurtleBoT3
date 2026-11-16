@@ -1,0 +1,126 @@
+
+slam_toolbox:
+  ros__parameters:
+
+    # ==========================================
+    # Solver configuration
+    # ==========================================
+
+    solver_plugin: solver_plugins::CeresSolver
+    ceres_linear_solver: SPARSE_NORMAL_CHOLESKY
+    ceres_preconditioner: SCHUR_JACOBI
+    ceres_trust_strategy: LEVENBERG_MARQUARDT
+    ceres_dogleg_type: TRADITIONAL_DOGLEG
+    ceres_loss_function: None
+
+    # ==========================================
+    # ROS parameters
+    # ==========================================
+
+    use_sim_time: true
+
+    mode: mapping
+
+    odom_frame: odom
+    map_frame: map
+    base_frame: base_footprint
+
+    scan_topic: /scan
+
+    use_map_saver: true
+
+    debug_logging: false
+
+    throttle_scans: 1
+
+    # ==========================================
+    # Map configuration
+    # ==========================================
+
+    resolution: 0.03
+
+    map_update_interval: 1.0
+
+    transform_publish_period: 0.02
+
+    min_laser_range: 0.12
+    max_laser_range: 2.8
+
+    minimum_time_interval: 0.2
+
+    transform_timeout: 0.3
+    tf_buffer_duration: 30.0
+
+    stack_size_to_use: 40000000
+
+    enable_interactive_mode: true
+
+    # ==========================================
+    # Scan matching
+    # ==========================================
+
+    use_scan_matching: true
+    use_scan_barycenter: true
+
+    minimum_travel_distance: 0.08
+    minimum_travel_heading: 0.12
+
+    check_min_dist_and_heading_precisely: true
+
+    scan_buffer_size: 15
+    scan_buffer_maximum_scan_distance: 2.5
+
+    link_match_minimum_response_fine: 0.35
+    link_scan_maximum_distance: 1.0
+
+    # ==========================================
+    # Local correlation search
+    # ==========================================
+
+    correlation_search_space_dimension: 0.30
+    correlation_search_space_resolution: 0.015
+    correlation_search_space_smear_deviation: 0.03
+
+    # ==========================================
+    # Scan matcher penalties
+    # ==========================================
+
+    distance_variance_penalty: 0.2
+    angle_variance_penalty: 0.7
+
+    fine_search_angle_offset: 0.00349
+
+    coarse_search_angle_offset: 0.2618
+    coarse_angle_resolution: 0.01745
+
+    minimum_angle_penalty: 0.9
+    minimum_distance_penalty: 0.5
+
+    use_response_expansion: false
+
+    # ==========================================
+    # Loop closure
+    # Initially disabled for evaluation
+    # ==========================================
+
+    do_loop_closing: true
+
+    loop_search_maximum_distance: 2.0
+
+    loop_match_minimum_chain_size: 8
+
+    loop_match_maximum_variance_coarse: 3.0
+
+    loop_match_minimum_response_coarse: 0.35
+    loop_match_minimum_response_fine: 0.45
+
+    loop_search_space_dimension: 1.5
+    loop_search_space_resolution: 0.03
+    loop_search_space_smear_deviation: 0.03
+
+    # ==========================================
+    # Occupancy grid
+    # ==========================================
+
+    min_pass_through: 3
+    occupancy_threshold: 0.15

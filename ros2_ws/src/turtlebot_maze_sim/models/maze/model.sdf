@@ -1,0 +1,59 @@
+<?xml version="1.0"?>
+
+<sdf version="1.9">
+  <model name="maze">
+
+    <static>true</static>
+
+    <link name="maze_link">
+
+      <!--
+        Original STL:
+        - units: millimeters
+        - Y-up coordinate system
+
+        Conversion:
+        - scale 0.001 -> meters
+        - rotate +90 deg around X -> Z-up for Gazebo
+        - translate mesh so that it is centered and its bottom is at Z=0
+      -->
+
+      <visual name="maze_visual">
+        <pose>
+          -1.407222 2.090802 -1.557067
+          1.570796 0 0
+        </pose>
+
+        <geometry>
+          <mesh>
+            <uri>model://maze/meshes/map.stl</uri>
+            <scale>0.001 0.001 0.001</scale>
+          </mesh>
+        </geometry>
+
+        <material>
+          <ambient>0.15 0.35 0.65 1</ambient>
+          <diffuse>0.20 0.45 0.85 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+        </material>
+      </visual>
+
+
+      <collision name="maze_collision">
+        <pose>
+          -1.407222 2.090802 -1.557067
+          1.570796 0 0
+        </pose>
+
+        <geometry>
+          <mesh>
+            <uri>model://maze/meshes/map.stl</uri>
+            <scale>0.001 0.001 0.001</scale>
+          </mesh>
+        </geometry>
+      </collision>
+
+    </link>
+
+  </model>
+</sdf>

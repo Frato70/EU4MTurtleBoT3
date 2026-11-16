@@ -22,6 +22,7 @@ RUN apt-get update && apt-get install -y \
     git \
     nano \
     vim \
+    tree \
     bash-completion \
     iputils-ping \
     net-tools \

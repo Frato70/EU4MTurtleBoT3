@@ -1,0 +1,6 @@
+# Gazebo ground truth pose
+- ros_topic_name: "/ground_truth_pose"
+  gz_topic_name: "/ground_truth_pose"
+  ros_type_name: "geometry_msgs/msg/PoseStamped"
+  gz_type_name: "gz.msgs.Pose"
+  direction: GZ_TO_ROS

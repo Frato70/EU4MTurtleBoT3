@@ -910,22 +910,653 @@ rviz2 -d "$PWD/ros2_ws/config/rviz/turtlebot3.rviz"
 
 ---
 
-# Current Development Focus
+# Custom TurtleBot3 Maze Simulation and Autonomy
 
-The communication infrastructure between the TurtleBot3 and development computers is operational.
+This section documents the custom ROS 2 package developed for the autonomous maze navigation project. It complements the existing Docker, Zenoh, hardware, and networking documentation.
 
-The next development stage focuses on simulation and autonomy:
+The simulation and autonomy stack are implemented in:
 
-1. Create the custom maze simulation environment.
-2. Validate TurtleBot3 sensors and motion inside the maze.
-3. Implement Phase 1 mapping using SLAM Toolbox.
-4. Save and reuse the generated map.
-5. Implement Phase 2 localization and navigation using Nav2.
-6. Add dynamic gates.
-7. Detect and react to closing gates.
-8. Replan routes dynamically.
-9. Optimize the route to minimize completion time.
-10. Transfer and tune the final solution on the physical TurtleBot3.
+`/ros2_ws/src/turtlebot_maze_sim/`
+
+The project is divided into two operational stages:
+
+- **Stage 1 — Autonomous Mapping:** The TurtleBot3 explores an initially unknown, static maze and constructs an occupancy grid using SLAM Toolbox.
+- **Stage 2 — Goal-Directed Navigation:** The robot localizes itself in a known map and navigates toward a user-defined goal. The environment can include moving gates and additional obstacles that are absent from the static map.
+
+Both stages share the simulated TurtleBot3 platform, LiDAR, wheel odometry, IMU, and Extended Kalman Filter (EKF).
+
+The main distinction is the source of global localization: SLAM Toolbox during mapping and Adaptive Monte Carlo Localization (AMCL) during navigation.
+
+## Package Organization
+
+The `turtlebot_maze_sim` package has the following structure:
+
+```text
+turtlebot_maze_sim/
+├── CMakeLists.txt
+├── LICENSE
+├── config/
+│   ├── bridges/
+│   │   ├── gates_bridge.yaml
+│   │   ├── gazebo_bridge.yaml
+│   │   └── ground_truth_bridge.yaml
+│   ├── cartographer/
+│   │   └── turtlebot3_lds_2d.lua
+│   ├── exploration/
+│   │   └── explore.yaml
+│   ├── gazebo/
+│   │   └── gui.config
+│   ├── localization/
+│   │   └── ekf.yaml
+│   ├── nav2/
+│   │   ├── burger_maze.yaml
+│   │   └── burger_maze_dynamic.yaml
+│   └── slam_toolbox/
+│       └── mapper_maze.yaml
+├── launch/
+│   ├── ekf.launch.py
+│   ├── exploration.launch.py
+│   ├── localization_dynamic.launch.py
+│   ├── mapping.launch.py
+│   ├── mapping_slam_toolbox.launch.py
+│   ├── navigation.launch.py
+│   └── simulation.launch.py
+├── maps/
+│   ├── exploration/
+│   │   ├── maze_ekf.pgm
+│   │   └── maze_ekf.yaml
+│   └── ground_truth/
+│       ├── maze_gt.pcd
+│       ├── maze_gt.pgm
+│       └── maze_gt.yaml
+├── models/
+│   ├── gates/
+│   │   ├── model.config
+│   │   └── model.sdf
+│   ├── maze/
+│   │   ├── meshes/
+│   │   ├── model.config
+│   │   └── model.sdf
+│   └── turtlebot3_burger/
+│       └── model.sdf
+├── package.xml
+├── rviz/
+│   ├── turtlebot3_conf2.rviz
+│   └── turtlebot_explore.rviz
+├── scripts/
+│   ├── benchmark_route.py
+│   ├── camera_controller.py
+│   ├── cartographer_odometry.py
+│   ├── ground_truth_odometry.py
+│   ├── odom_covariance.py
+│   └── random_gates.py
+└── worlds/
+    └── maze_world.sdf
+```
+
+### Configuration Files
+
+| Directory | Description |
+|---|---|
+| `config/bridges/` | Configures communication between Gazebo Transport and ROS 2, including simulated sensors, velocity commands, and ground-truth data. |
+| `config/cartographer/` | Contains the 2D LiDAR configuration for the alternative Cartographer SLAM implementation. |
+| `config/exploration/` | Stores the Explore Lite parameters used for autonomous frontier exploration. |
+| `config/gazebo/` | Contains the Gazebo graphical interface and camera configuration. |
+| `config/localization/` | Contains the EKF configuration for sensor fusion. |
+| `config/nav2/` | Provides separate Nav2 configurations for mapping and known-map navigation. |
+| `config/slam_toolbox/` | Contains the SLAM Toolbox configuration for occupancy-grid mapping. |
+
+The two Nav2 configurations are intentionally maintained separately:
+
+- `burger_maze.yaml` is used for navigation during mapping and autonomous exploration.
+- `burger_maze_dynamic.yaml` is used for goal-directed navigation with a previously generated map and potentially changing obstacles.
+
+This separation allows navigation parameters to be tuned independently for each stage.
+
+### Launch Files
+
+| File | Purpose |
+|---|---|
+| `simulation.launch.py` | Starts the Gazebo maze simulation, inserts the TurtleBot3, and optionally enables gates, additional obstacles, and ground-truth features. |
+| `ekf.launch.py` | Starts the EKF configured to fuse wheel-odometry information and IMU measurements. |
+| `mapping_slam_toolbox.launch.py` | Starts SLAM Toolbox for building the occupancy grid. |
+| `mapping.launch.py` | Alternative mapping launch, retained alongside the SLAM Toolbox implementation. |
+| `navigation.launch.py` | Starts Nav2 for navigation during mapping and exploration. |
+| `exploration.launch.py` | Starts Explore Lite for autonomous frontier exploration. |
+| `localization_dynamic.launch.py` | Starts known-map localization using Map Server and AMCL. |
+
+### Scripts
+
+| File | Purpose |
+|---|---|
+| `odom_covariance.py` | Processes simulated wheel odometry and supplies the covariance information used by the EKF. |
+| `ground_truth_odometry.py` | Provides ground-truth odometry data for experimental evaluation. |
+| `cartographer_odometry.py` | Odometry-related utility for the alternative Cartographer workflow. |
+| `random_gates.py` | Controls the moving gates and their opening and closing behavior. |
+| `camera_controller.py` | Controls the Gazebo camera for monitoring the simulation. |
+| `benchmark_route.py` | Utility associated with navigation route benchmarking and performance evaluation. |
+
+The alternative Cartographer workflow and benchmarking utility are retained in the package. The commands documented below describe the currently used SLAM Toolbox and Nav2 workflows.
+
+### Models and Maps
+
+The `models/` directory contains the SDF representations of the TurtleBot3 Burger, the maze, and the gates.
+
+The `worlds/maze_world.sdf` file defines the Gazebo simulation world.
+
+The simulation launch can scale the maze geometry at runtime and optionally insert entrance and exit closure walls.
+
+The `maps/` directory separates two different kinds of occupancy grids:
+
+| File | Description |
+|---|---|
+| `maps/ground_truth/maze_gt.yaml` | Metadata for the reference occupancy map generated from the simulated environment. |
+| `maps/ground_truth/maze_gt.pgm` | Reference occupancy-grid image. |
+| `maps/ground_truth/maze_gt.pcd` | Point-cloud representation generated during reference-map creation. |
+| `maps/exploration/maze_ekf.yaml` | Metadata for the occupancy grid generated by SLAM. |
+| `maps/exploration/maze_ekf.pgm` | Occupancy-grid image reconstructed by the robot. |
+
+The ground-truth map is used for controlled experiments and quantitative evaluation. It is not required as input during autonomous SLAM mapping.
+
+---
+
+# State Estimation and Coordinate Frames
+
+Both operational stages use an Extended Kalman Filter implemented with `robot_localization`.
+
+The estimation pipeline is:
+
+```text
+Gazebo wheel odometry
+        |
+        v
+    /odom_raw
+        |
+        v
+odom_covariance.py
+        |
+        v
+    /odom_cov ------+
+                    |
+                    v
+                   EKF <------ /imu
+                    |
+                    v
+                  /odom
+                    |
+                    v
+         odom -> base_footprint
+```
+
+The EKF combines wheel-odometry information with IMU angular-velocity measurements to provide a more stable estimate of the robot's local motion.
+
+This is particularly important during rotations, where wheel slip and odometry errors can affect LiDAR alignment and localization.
+
+The EKF publishes the local odometry transform:
+
+```text
+odom -> base_footprint
+```
+
+A separate global-localization component publishes:
+
+```text
+map -> odom
+```
+
+During Stage 1, this transform is provided by SLAM Toolbox.
+
+During Stage 2, it is provided by AMCL.
+
+The resulting TF structure is:
+
+```text
+map
+ └── odom
+      └── base_footprint
+           └── base_link
+                └── sensor frames
+```
+
+SLAM Toolbox and AMCL should not simultaneously publish `map -> odom` in the configurations described here.
+
+Ground-truth odometry can be enabled separately for evaluation. It is not used as an EKF input in the documented estimation pipeline.
+
+---
+
+# Workspace Build and Preparation
+
+The following instructions assume that the ROS 2 Jazzy Docker container is already running and that the user has entered it.
+
+Build the workspace before the initial execution or after relevant package changes:
+
+```bash
+cd /ros2_ws
+
+colcon build --symlink-install
+
+source install/setup.bash
+```
+
+Each new terminal inside the container should load the ROS 2 environment and workspace:
+
+```bash
+source /opt/ros/jazzy/setup.bash
+source /ros2_ws/install/setup.bash
+```
+
+**Important:** The numbered terminals below are separate terminals. Long-running launch processes should remain active while subsequent components are started.
+
+A Docker image rebuild is not normally required for changes to the project's Python files, YAML configurations, or launch files. However, the ROS 2 workspace may need to be rebuilt depending on how package files are installed.
+
+---
+
+# Stage 1 — Autonomous Mapping and Exploration
+
+## Objective
+
+The robot explores an initially unknown maze, detects walls using its 2D LiDAR, and generates a map using SLAM Toolbox.
+
+The maze is static during this stage. Moving gates and additional obstacles are disabled.
+
+The mapping pipeline consists of:
+
+```text
+Gazebo
+   |
+   +--> Wheel odometry + IMU
+   |            |
+   |            v
+   |           EKF
+   |            |
+   |            v
+   |       Local odometry
+   |            |
+   +--> LiDAR --+--> SLAM Toolbox
+                       |
+                       +--> /map
+                       +--> map -> odom
+                                |
+                                v
+                               Nav2
+                                ^
+                                |
+                            Explore Lite
+```
+
+SLAM Toolbox performs mapping and global pose correction, while Nav2 is responsible for path planning and execution.
+
+Explore Lite selects exploration goals based on frontiers between known and unknown regions.
+
+## Launch Procedure
+
+### Terminal 1 — Gazebo Simulation
+
+```bash
+ros2 launch turtlebot_maze_sim simulation.launch.py \
+    scale:=1.5 \
+    closed_maze:=true \
+    gates:=false \
+    obstacle:=false \
+    ground_truth:=false \
+    generate_map:=false
+```
+
+The parameters have the following meanings:
+
+| Parameter | Description |
+|---|---|
+| `scale:=1.5` | Scales the horizontal maze geometry by a factor of 1.5. |
+| `closed_maze:=true` | Includes the entrance and exit closure walls. |
+| `gates:=false` | Disables the moving gates. |
+| `obstacle:=false` | Disables the additional static obstacle. |
+| `ground_truth:=false` | Disables ground-truth odometry publication. |
+| `generate_map:=false` | Does not regenerate the reference occupancy map. |
+
+### Terminal 2 — Odometry Covariance Processing
+
+```bash
+ros2 run turtlebot_maze_sim odom_covariance.py
+```
+
+The node receives raw odometry and publishes the processed odometry used by the EKF:
+
+```text
+/odom_raw -> /odom_cov
+```
+
+### Terminal 3 — Extended Kalman Filter
+
+```bash
+ros2 launch turtlebot_maze_sim ekf.launch.py
+```
+
+The EKF uses:
+
+```text
+config/localization/ekf.yaml
+```
+
+It produces filtered odometry and publishes the `odom -> base_footprint` transformation.
+
+### Terminal 4 — SLAM Toolbox
+
+```bash
+ros2 launch turtlebot_maze_sim mapping_slam_toolbox.launch.py
+```
+
+The mapping configuration is stored in:
+
+```text
+config/slam_toolbox/mapper_maze.yaml
+```
+
+The current configuration uses scan matching and is adapted to the dimensions of the maze.
+
+The map resolution is configured as:
+
+```yaml
+resolution: 0.03
+```
+
+This corresponds to a 3 cm occupancy-grid resolution.
+
+### Terminal 5 — Nav2
+
+```bash
+ros2 launch turtlebot_maze_sim navigation.launch.py
+```
+
+This launch uses the mapping-stage navigation configuration:
+
+```text
+config/nav2/burger_maze.yaml
+```
+
+Nav2 receives the map generated by SLAM Toolbox and provides the planning and control capabilities required by exploration.
+
+### Terminal 6 — Autonomous Exploration
+
+```bash
+ros2 launch turtlebot_maze_sim exploration.launch.py
+```
+
+Explore Lite identifies frontiers and sends navigation objectives to Nav2.
+
+The robot explores the known/unknown boundaries until the exploration algorithm determines that no further suitable frontiers remain.
+
+### Terminal 7 — RViz2
+
+```bash
+rviz2 -d src/turtlebot_maze_sim/rviz/turtlebot_explore.rviz
+```
+
+RViz allows the operator to observe the map being constructed, LiDAR observations, robot pose, TF frames, planned paths, and costmaps.
+
+For map visualization, the recommended configuration is:
+
+```text
+Fixed Frame: map
+Map Topic: /map
+Durability: Transient Local
+LaserScan Topic: /scan
+```
+
+RViz can also be started before Explore Lite for manual navigation tests.
+
+## Saving the Generated Map
+
+Once a satisfactory map has been constructed, save it using:
+
+```bash
+ros2 run nav2_map_server map_saver_cli \
+    -f /ros2_ws/src/turtlebot_maze_sim/maps/exploration/maze_ekf \
+    --ros-args -p use_sim_time:=true
+```
+
+This generates:
+
+```text
+maps/exploration/
+├── maze_ekf.pgm
+└── maze_ekf.yaml
+```
+
+The `.pgm` file contains the occupancy-grid image, while the `.yaml` file contains the map resolution, origin, and related metadata.
+
+The resulting map can subsequently be loaded by Map Server and used with AMCL during Stage 2.
+
+---
+
+# Stage 2 — Known-Map Navigation
+
+## Objective
+
+During the second stage, the robot starts with a previously generated or reference map and navigates toward a goal selected by the operator.
+
+Unlike Stage 1, SLAM Toolbox is not executed.
+
+Instead, Map Server provides the existing map and AMCL estimates the robot's global pose by comparing LiDAR observations with the known environment.
+
+Nav2 calculates and executes paths toward the requested goal.
+
+The environment may contain moving gates and additional obstacles that are not represented in the static map.
+
+The navigation pipeline is:
+
+```text
+Saved map
+    |
+    v
+Map Server --------+
+                   |
+                   v
+LiDAR -----------> AMCL <---- EKF odometry
+                   |
+                   v
+              map -> odom
+                   |
+                   v
+                  Nav2
+                   |
+                   v
+             TurtleBot3
+```
+
+The current experimental workflow uses the reference ground-truth map to isolate and evaluate localization and navigation behavior.
+
+The final integrated workflow is intended to use the occupancy grid generated during Stage 1.
+
+## Launch Procedure
+
+### Terminal 1 — Gazebo Simulation
+
+```bash
+ros2 launch turtlebot_maze_sim simulation.launch.py \
+    scale:=1.5 \
+    closed_maze:=true \
+    gates:=false \
+    obstacle:=false \
+    ground_truth:=true \
+    generate_map:=false
+```
+
+This configuration starts the known-map navigation scenario without additional gates or obstacles.
+
+Ground-truth odometry is enabled for experimental evaluation. It is not used as the localization input.
+
+The moving gates and the optional obstacle can be enabled independently when required.
+
+### Terminal 2 — Odometry Covariance Processing
+
+```bash
+ros2 run turtlebot_maze_sim odom_covariance.py
+```
+
+### Terminal 3 — Extended Kalman Filter
+
+```bash
+ros2 launch turtlebot_maze_sim ekf.launch.py
+```
+
+The same odometry-processing and EKF configuration are reused from Stage 1.
+
+### Terminal 4 — AMCL and Map Server
+
+```bash
+ros2 launch turtlebot_maze_sim localization_dynamic.launch.py \
+    map:=/ros2_ws/src/turtlebot_maze_sim/maps/ground_truth/maze_gt.yaml \
+    params_file:=/ros2_ws/src/turtlebot_maze_sim/config/nav2/burger_maze_dynamic.yaml \
+    use_sim_time:=true \
+    autostart:=true
+```
+
+This starts the localization components, including Map Server, AMCL, and the localization lifecycle manager.
+
+`autostart:=true` requests automatic configuration and activation of the managed localization nodes.
+
+The reference map is used for the current controlled simulation experiments.
+
+To use the map constructed during Stage 1, the map argument can instead be changed to:
+
+```bash
+map:=/ros2_ws/src/turtlebot_maze_sim/maps/exploration/maze_ekf.yaml
+```
+
+When switching maps, the AMCL initial pose must also correspond to the coordinate system and actual starting location in the selected map.
+
+### Terminal 5 — Nav2
+
+```bash
+ros2 launch nav2_bringup navigation_launch.py \
+    params_file:=/ros2_ws/src/turtlebot_maze_sim/config/nav2/burger_maze_dynamic.yaml \
+    use_sim_time:=true \
+    autostart:=true \
+    use_composition:=False
+```
+
+This starts the Nav2 navigation stack using the configuration dedicated to known-map navigation.
+
+The navigation stack includes path planning, local control, costmaps, recovery behaviors, velocity smoothing, and collision monitoring.
+
+The current configuration uses NavFn for global path planning and DWB for local trajectory control.
+
+### Terminal 6 — RViz2
+
+```bash
+rviz2 -d src/turtlebot_maze_sim/rviz/turtlebot_explore.rviz
+```
+
+In RViz, the operator can send a navigation goal using the available Nav2 goal tool.
+
+The robot then attempts to follow the planned path while monitoring the environment using its LiDAR.
+
+## Dynamic Gates and Additional Obstacles
+
+The simulation launch supports independent activation of moving gates and an additional static obstacle.
+
+For example:
+
+```bash
+ros2 launch turtlebot_maze_sim simulation.launch.py \
+    scale:=1.5 \
+    closed_maze:=true \
+    gates:=true \
+    obstacle:=true \
+    ground_truth:=true \
+    generate_map:=false
+```
+
+The two options are independent:
+
+| Gates | Obstacle | Scenario |
+|---|---|---|
+| Disabled | Disabled | Original maze. |
+| Enabled | Disabled | Maze with moving gates. |
+| Disabled | Enabled | Maze with an additional static obstacle. |
+| Enabled | Enabled | Maze with both gates and obstacle. |
+
+The optional obstacle is generated as a box with collision and visual geometry.
+
+Its position, horizontal dimensions, and orientation can be configured using launch arguments:
+
+```text
+obstacle_x
+obstacle_y
+obstacle_yaw
+obstacle_length
+obstacle_width
+obstacle_height
+```
+
+Horizontal position and dimensions are scaled according to the `scale` argument. Height remains unchanged.
+
+The additional obstacle is inserted after reference-map generation, so it is not included in the original ground-truth occupancy grid.
+
+This allows experiments where the robot must detect an unexpected obstruction and calculate an alternative route if one exists.
+
+Moving-gate navigation, waiting decisions, and time-efficient route replanning remain subjects of further development and evaluation.
+
+---
+
+# Navigation and Localization Development
+
+Several improvements have been incorporated during development to address localization drift and unstable navigation behavior.
+
+### Odometry Fusion
+
+The EKF was introduced to fuse wheel-odometry information with IMU angular velocity.
+
+This improves local motion estimation, particularly during rotations.
+
+### AMCL Configuration
+
+AMCL parameters were adapted to the dimensions and resolution of the maze.
+
+The objective is to improve alignment between the LiDAR observations and the known occupancy grid.
+
+### SLAM Configuration
+
+SLAM Toolbox was configured to use the improved odometry estimate, scan matching, and a 3 cm map resolution.
+
+The scan-matching search parameters were adapted to the relatively small and repetitive geometry of the maze.
+
+### Navigation Controller
+
+DWB parameters were adjusted to improve trajectory following through narrow corridors and sharp turns.
+
+Important parameters include linear and angular velocity limits, acceleration constraints, simulation horizon, and trajectory critics.
+
+### Collision Monitoring
+
+Collision Monitor was investigated after observing navigation oscillations and repeated failures near corners.
+
+The predictive `FootprintApproach` behavior was disabled during controlled static-environment experiments because its removal improved navigation behavior.
+
+This is an experimental configuration decision, not a general safety recommendation for physical robots.
+
+Collision protection and stopping distances must be validated again before real-world deployment.
+
+### Current Status
+
+The simulation currently supports:
+
+- A scalable maze with optional closure walls.
+- Independently configurable moving gates and an additional obstacle.
+- Simulated wheel odometry, IMU, and LiDAR.
+- EKF-based odometry estimation.
+- SLAM Toolbox mapping.
+- Autonomous exploration using Explore Lite.
+- Saved occupancy-grid maps.
+- AMCL localization with a known map.
+- Nav2 goal-directed navigation.
+- Ground-truth data for experimental evaluation.
+
+Initial tests have produced a coherent SLAM map and substantially improved navigation behavior.
+
+Further tuning and quantitative evaluation are still required, especially for narrow turns, obstacle avoidance, gate interaction, and total navigation time.
+
+The final objective remains to integrate both stages and deploy the resulting autonomy software on the physical TurtleBot3 through the existing ROS 2 and Zenoh infrastructure.
 
 ---
 

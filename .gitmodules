@@ -1,0 +1,6 @@
+[submodule "ros2_ws/src/m-explore-ros2"]
+	path = ros2_ws/src/m-explore-ros2
+	url = https://github.com/robo-friends/m-explore-ros2.git
+[submodule "ros2_ws/src/sdf2map"]
+	path = ros2_ws/src/sdf2map
+	url = https://github.com/atinfinity/sdf2map.git

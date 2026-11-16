@@ -1,0 +1,28 @@
+explore:
+  ros__parameters:
+
+    use_sim_time: true
+
+    robot_base_frame: base_footprint
+
+    costmap_topic: /map
+    costmap_updates_topic: /map_updates
+
+    visualize: true
+
+    # Reevaluate frontiers every 10 seconds
+    planner_frequency: 0.10
+
+    # Maximum time without progress
+    progress_timeout: 60.0
+
+    # Frontier selection
+    potential_scale: 3.0
+    orientation_scale: 0.0
+    gain_scale: 0.5
+
+    transform_tolerance: 0.3
+
+    min_frontier_size: 0.10
+
+    return_to_init: false
