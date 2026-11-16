@@ -220,16 +220,40 @@ docker compose version
 
 # Clone the Repository
 
+To clone the repository **including its Git submodules** (`m-explore-ros2` and `sdf2map`), run:
+
 ```bash
-git clone https://github.com/LuisAntonio1929/TurtleBot_Rover.git
+git clone --recurse-submodules https://github.com/LuisAntonio1929/TurtleBot_Rover.git
 cd TurtleBot_Rover
 ```
 
-If already cloned:
+The `--recurse-submodules` option automatically downloads the external ROS 2 packages required for autonomous exploration and ground-truth map generation.
+
+If the repository has **already been cloned without submodules**, initialize and download them using:
+
+```bash
+git submodule update --init --recursive
+```
+
+If the repository is **already cloned and you want to obtain the latest project changes**, run:
 
 ```bash
 git pull
+git submodule update --init --recursive
 ```
+
+The second command ensures that all submodules are checked out at the versions specified by the main repository.
+
+To verify that the submodules are available:
+
+```bash
+git submodule status
+```
+
+The expected submodules are:
+
+- `ros2_ws/src/m-explore-ros2` — Autonomous frontier exploration.
+- `ros2_ws/src/sdf2map` — Ground-truth map generation from SDF geometry.
 
 ---
 
